@@ -3,6 +3,7 @@
 #include <ESP8266WiFi.h>
 #include <Settings.h>
 #include <FS.h>
+#include <ESP8266mDNS.h>
 
 #include <TokenIterator.h>
 #include <MqttClient.h>
@@ -80,6 +81,11 @@ void setup() {
 
   probeHandler = WiFi.onSoftAPModeProbeRequestReceived(onProbeRequestPrint);
   connectedHandler = WiFi.onSoftAPModeStationConnected(onStationConnected);
+
+  if (! MDNS.begin("dash-stadium")) {
+    Serial.println(F("Error setting up MDNS responder"));
+  }
+  MDNS.addService("http", "tcp", 80);
 
   webServer.onSettingsSaved(applySettings);
   webServer.begin();
