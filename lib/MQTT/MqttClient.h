@@ -19,7 +19,7 @@ public:
   void begin();
   void handleClient();
   void reconnect();
-  void sendUpdate(const char* eventType, const char* macAddr);
+  void sendUpdate(const char* eventType, const char* macAddr, const char* deviceAlias);
 
 private:
   WiFiClient tcpClient;

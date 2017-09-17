@@ -4,10 +4,12 @@
 #include <Settings.h>
 #include <DashStadiumHttpServer.h>
 #include <TokenIterator.h>
+#include <index.html.gz.h>
 
 void DashStadiumHttpServer::begin() {
   applySettings(settings);
 
+  server.on("/", HTTP_GET, handleServe_P(index_html_gz, index_html_gz_len));
   server.on("/firmware", HTTP_POST,
     [this](){ handleFirmwareUpload(); },
     [this](){ handleFirmwareIncrement(); }
@@ -17,6 +19,13 @@ void DashStadiumHttpServer::begin() {
   server.on("/settings", HTTP_PUT, [this]() { handleUpdateSettings(); });
 
   server.begin();
+
+  wsServer.onEvent(
+    [this](uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
+      handleWsEvent(num, type, payload, length);
+    }
+  );
+  wsServer.begin();
 }
 
 void DashStadiumHttpServer::handleFirmwareIncrement() {
@@ -63,6 +72,7 @@ void DashStadiumHttpServer::handleFirmwareUpload() {
 
 void DashStadiumHttpServer::handleClient() {
   server.handleClient();
+  wsServer.loop();
 }
 
 void DashStadiumHttpServer::on(const char* path, HTTPMethod method, ESP8266WebServer::THandlerFunction handler) {
@@ -78,6 +88,12 @@ void DashStadiumHttpServer::applySettings(Settings& settings) {
 }
 
 void DashStadiumHttpServer::onSettingsSaved(SettingsSavedHandler handler) {
+  if (settings.hasAuthSettings()) {
+    server.requireAuthentication(settings.adminUsername, settings.adminPassword);
+  } else {
+    server.disableAuthentication();
+  }
+  
   this->settingsSavedHandler = handler;
 }
 
@@ -164,11 +180,35 @@ void DashStadiumHttpServer::handleUpdateSettings() {
 ESP8266WebServer::THandlerFunction DashStadiumHttpServer::handleServe_P(const char* data, size_t length) {
   return [this, data, length]() {
     server.sendHeader("Content-Encoding", "gzip");
-    server.sendHeader("Content-Length", String(length));
-    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-    server.send(200, "text/html", "");
     server.setContentLength(length);
+    server.send(200, "text/html", "");
     server.sendContent_P(data, length);
     server.client().stop();
   };
+}
+
+void DashStadiumHttpServer::handleWsEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
+  switch (type) {
+    case WStype_DISCONNECTED:
+      if (numWsClients > 0) {
+        numWsClients--;
+      }
+      break;
+
+    case WStype_CONNECTED:
+      numWsClients++;
+      break;
+  }
+}
+
+void DashStadiumHttpServer::handleWifiEvent(const char *eventType, const uint8_t *macAddr) {
+  if (numWsClients > 0) {
+    char macAddrStr[25];
+    IntParsing::bytesToHexStr(macAddr, 6, macAddrStr, sizeof(macAddrStr), ':');
+
+    char msg[100];
+    sprintf(msg, "{\"event\":\"%s\",\"macAddr\":\"%s\"}", eventType, macAddrStr);
+
+    wsServer.broadcastTXT(msg);
+  }
 }

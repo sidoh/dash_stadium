@@ -58,6 +58,7 @@ public:
   String apPassword;
 
   uint8_t* monitoredMacs;
+  String* deviceAliases;
   size_t numMonitoredMacs;
   uint32_t debounceThresholdMs;
 

@@ -1,0 +1,89 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>Dash Stadium</title>
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!--[if lt IE 9]>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.js"></script>
+  <![endif]-->
+  <link href="css/style.css" rel="stylesheet" />
+</head>
+
+<body>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
+
+  <script src="js/script.js" lang="text/javascript"></script>
+
+  <div class="container">
+    <div class="row header-row">
+      <div class="col-sm-12">
+        <h1>Settings</h1>
+      </div>
+    </div>
+
+    <div>&nbsp;</div>
+
+    <div class="row">
+      <div class="col-sm-12">
+        <form action="#" id="settings">
+          <input type="submit" class="btn btn-success" value="Submit" />
+        </form>
+      </div>
+    </div>
+
+    <div class="row header-row">
+      <div class="col col-sm-10">
+        <h1>Monitored Devices</h1>
+      </div>
+
+      <div class="col col-sm-2">
+        <button class="btn btn-success header-btn" id="add-device-btn">
+          <i class="glyphicon glyphicon-plus"></i>
+          Add Device
+        </button>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col col-sm-12">
+        <form id="monitored-devices-form">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>MAC Address</th>
+                <th>Alias</th>
+              </tr>
+            </thead>
+            <tbody id="monitored-devices">
+            </tbody>
+          </table>
+          <input type="submit" class="btn btn-success" value="Save" />
+        </form>
+      </div>
+    </div>
+
+    <div>&nbsp;</div>
+
+    <div class="row header-row">
+      <div class="col-sm-12">
+        <h1>WiFi Events</h1>
+      </div>
+    </div>
+
+    <div>&nbsp;</div>
+
+    <div class="row">
+      <div class="col-sm-12">
+        <pre class="wifi-events"></pre>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

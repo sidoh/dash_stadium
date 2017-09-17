@@ -34,14 +34,23 @@ void Settings::patch(JsonObject& parsedSettings) {
 
       if (this->monitoredMacs != NULL) {
         delete this->monitoredMacs;
+        delete this->deviceAliases;
       }
 
       this->numMonitoredMacs = macs.size();
       this->monitoredMacs = new uint8_t[this->numMonitoredMacs * 6];
+      this->deviceAliases = new String[this->numMonitoredMacs];
 
       for (size_t i = 0; i < this->numMonitoredMacs; i++) {
-        const char* s = macs[i];
+        JsonArray& config = macs[i];
+
+        if (!config.success()) {
+          continue;
+        }
+
+        const char* s = config[0];
         parseMac(s, this->monitoredMacs+(i*6));
+        this->deviceAliases[i] = config.get<String>(1);
       }
     }
   }
@@ -97,14 +106,14 @@ void Settings::serialize(Stream& stream, const bool prettyPrint) {
     memset(macBuffer, 0, 25);
 
     for (size_t i = 0; i < this->numMonitoredMacs; i++) {
+      JsonArray& config = jsonBuffer.createArray();
       formatMac(this->monitoredMacs+(6*i), macBuffer);
-      macs.add(String(macBuffer));
+      config.add(String(macBuffer));
+      config.add(String(this->deviceAliases[i]));
+
+      macs.add(config);
     }
     root["monitored_macs"] = macs;
-
-    for (size_t i = 0; i < macs.size(); i++) {
-      const String& mac = macs[i];
-    }
   }
 
   if (prettyPrint) {
@@ -147,9 +156,9 @@ int Settings::findMonitoredMac(const uint8_t *mac) {
     return -1;
   }
 
-  for (size_t i = 0; i < this->numMonitoredMacs; i += 6) {
+  for (size_t i = 0; i < this->numMonitoredMacs; i++) {
     bool found = true;
-    uint8_t* monMac = this->monitoredMacs+i;
+    uint8_t* monMac = this->monitoredMacs+(i*6);
 
     for (size_t j = 0; j < 6; j++) {
       if (mac[j] != monMac[j]) {

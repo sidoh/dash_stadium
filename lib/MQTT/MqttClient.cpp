@@ -83,19 +83,16 @@ void MqttClient::handleClient() {
   mqttClient->loop();
 }
 
-void MqttClient::sendUpdate(const char* eventType, const char* macAddr) {
+void MqttClient::sendUpdate(const char* eventType, const char* macAddr, const char* deviceAlias) {
   String topic = settings.mqttTopicPattern;
 
   if (topic.length() == 0) {
     return;
   }
 
-  printf("Event = %s, macAddr = %s\n", eventType, macAddr);
-
   topic.replace(":event_type", eventType);
   topic.replace(":mac_addr", macAddr);
-
-  Serial.println(topic);
+  topic.replace(":device_alias", deviceAlias);
 
 #ifdef MQTT_DEBUG
   printf("MqttClient - publishing update to %s: %s\n", topic.c_str(), DASH_MQTT_PAYLOAD);

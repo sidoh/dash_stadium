@@ -5,50 +5,54 @@
 #include <FS.h>
 #include <ESP8266mDNS.h>
 
+#include <Size.h>
+#include <IntParsing.h>
 #include <TokenIterator.h>
 #include <MqttClient.h>
 #include <DashStadiumHttpServer.h>
 
+extern "C" {
+#include <user_interface.h>
+}
+
 WiFiEventHandler probeHandler;
 WiFiEventHandler connectedHandler;
 
+enum DashEventType {
+  DASH_EVENT_PROBE_REQUEST = 0,
+  DASH_EVENT_CONNECTED = 1
+};
+static const char* EVENT_NAMES[] = {"probe_request", "connected"};
+
 Settings settings;
 MqttClient* mqttClient = NULL;
-unsigned long* lastSeenTimes = NULL;
+unsigned long* lastSeenTimes[2] = {NULL, NULL};
 DashStadiumHttpServer webServer(settings);
 
-String macToString(const unsigned char* mac) {
-  char buf[20];
-  snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x",
-           mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-  return String(buf);
-}
-
-void triggerEvent(const char* eventName, const uint8_t* mac) {
+void triggerEvent(const DashEventType& evtType, const uint8_t* mac) {
   int macIx = settings.findMonitoredMac(mac);
 
-  if (macIx != -1) {
-    String formattedMac = macToString(mac);
-    printf("Event triggered - %s for %s\n", eventName, formattedMac.c_str());
+  webServer.handleWifiEvent(EVENT_NAMES[evtType], mac);
 
+  if (macIx != -1) {
     unsigned long timestamp = millis();
 
-    if ((lastSeenTimes[macIx] + settings.debounceThresholdMs) < timestamp) {
-      mqttClient->sendUpdate(eventName, formattedMac.c_str());
-    } else {
-      Serial.println(F("Debouncing update, not sending repeat"));
+    if ((lastSeenTimes[evtType][macIx] + settings.debounceThresholdMs) < timestamp) {
+      char formattedMac[25];
+      Settings::formatMac(mac, formattedMac);
+      mqttClient->sendUpdate(EVENT_NAMES[evtType], formattedMac, settings.deviceAliases[macIx].c_str());
     }
 
-    lastSeenTimes[macIx] = timestamp;
+    lastSeenTimes[evtType][macIx] = timestamp;
   }
 }
 
 void onProbeRequestPrint(const WiFiEventSoftAPModeProbeRequestReceived& evt) {
-  triggerEvent("probe_request", evt.mac);
+  triggerEvent(DASH_EVENT_PROBE_REQUEST, evt.mac);
 }
 
 void onStationConnected(const WiFiEventSoftAPModeStationConnected& evt) {
-  triggerEvent("connected", evt.mac);
+  triggerEvent(DASH_EVENT_CONNECTED, evt.mac);
 }
 
 void applySettings() {
@@ -61,11 +65,18 @@ void applySettings() {
     mqttClient->begin();
   }
 
-  if (lastSeenTimes) {
-    delete lastSeenTimes;
+  if (*lastSeenTimes) {
+    for (size_t i = 0; i < size(EVENT_NAMES); i++) {
+      delete lastSeenTimes[i];
+    }
   }
-  lastSeenTimes = new unsigned long[settings.numMonitoredMacs];
-  memset(lastSeenTimes, 0, sizeof(unsigned long)*settings.numMonitoredMacs);
+
+  for (size_t i = 0; i < size(EVENT_NAMES); i++) {
+    lastSeenTimes[i] = new unsigned long[settings.numMonitoredMacs];
+    memset(lastSeenTimes[i], 0, sizeof(unsigned long)*settings.numMonitoredMacs);
+  }
+
+  settings.setupSoftAP();
 }
 
 void setup() {
